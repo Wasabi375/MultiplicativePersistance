@@ -20,11 +20,12 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.5-1.4-M1")
 }
 
-tasks {
-    compileKotlin {
-        kotlinOptions.jvmTarget = "1.8"
-    }
-    compileTestKotlin {
-        kotlinOptions.jvmTarget = "1.8"
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
+        // can't use new type inference because of https://youtrack.jetbrains.com/issue/KT-36446
+        freeCompilerArgs = listOf("-Xuse-experimental=kotlin.Experimental,kotlin.ExperimentalStdlibApi")
     }
 }
