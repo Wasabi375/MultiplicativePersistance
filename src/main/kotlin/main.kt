@@ -5,7 +5,11 @@ import java.math.BigInteger
 
 import kotlinx.coroutines.channels.produce
 
+typealias InputChunnk = List<BigInteger>
+
 var numDigitStart = 1
+
+const val chunkSize = 100
 
 const val workerCount = 100
 
@@ -73,28 +77,30 @@ fun mainThreaded() {
 
     var currentHighestDigitCount = 0
 
-    fun CoroutineScope.launchWorker(candidates: ReceiveChannel<BigInteger>) = launch {
-        for(n in candidates) {
-            val numberString = n.toString(10)
-            val digitCount = numberString.length
+    fun CoroutineScope.launchWorker(chunks: ReceiveChannel<InputChunnk>) = launch {
+        for(chunk in chunks) {
+            for(n in chunk) {
+                val numberString = n.toString(10)
+                val digitCount = numberString.length
 
-            if(digitCount > currentHighestDigitCount) {
-                launch (updateCountDispatcher) {
-                    if(digitCount > currentHighestDigitCount) {
-                        currentHighestDigitCount = digitCount
-                        if(digitCount % 10 == 0 || digitCount > 50) {
-                            println("Digit Count: $digitCount")
+                if (digitCount > currentHighestDigitCount) {
+                    launch(updateCountDispatcher) {
+                        if (digitCount > currentHighestDigitCount) {
+                            currentHighestDigitCount = digitCount
+                            if (digitCount % 10 == 0 || digitCount > 50) {
+                                println("Digit Count: $digitCount")
+                            }
                         }
                     }
                 }
-            }
 
-            val persistence = calculatePersistence(n)
+                val persistence = calculatePersistence(n)
 
-            val currentBest = BestPersistenceCandidateResult.getBest(digitCount)
-            if(currentBest.persistence < persistence) {
-                if(BestPersistenceCandidateResult.addResult(n, persistence, digitCount)) {
-                    println("New Best: Digit count: $digitCount, persistence: $persistence, n: $n")
+                val currentBest = BestPersistenceCandidateResult.getBest(digitCount)
+                if (currentBest.persistence < persistence) {
+                    if (BestPersistenceCandidateResult.addResult(n, persistence, digitCount)) {
+                        println("New Best: Digit count: $digitCount, persistence: $persistence, n: $n")
+                    }
                 }
             }
         }
@@ -103,8 +109,8 @@ fun mainThreaded() {
     runBlocking {
 
         val candidates = produce {
-            for(n in candidateSequenceGenerator(numDigitStart)) {
-                send(n)
+            for(c in candidateSequenceGenerator(numDigitStart).chunked(chunkSize)) {
+                send(c)
             }
         }
 
